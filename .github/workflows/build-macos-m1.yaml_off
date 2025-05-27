@@ -1,0 +1,132 @@
+name: Build git-annex on MacOS (14, M1)
+
+on:
+  push:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  LANG: C.utf-8
+
+jobs:
+  build-package:
+    runs-on: macos-14
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Checkout git-annex
+        # we exclude doc/ -- it has filenames so long that the FS
+        # on windows barfs
+        # we fetch shallow, assuming the last 2 months still have a
+        # usable tag to determine a version
+        run: |
+          git submodule init git-annex
+          git clone --no-checkout --shallow-since 2.month.ago $(git config submodule.git-annex.url) git-annex
+          git submodule update --init --recursive --force git-annex
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up system
+        run: brew install libmagic pkg-config
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+
+      - name: Get build version
+        id: build-version
+        working-directory: ./git-annex
+        run: |
+          mkdir -p dist
+          version="$(git describe HEAD | sed -e 's/-/+git/')"
+          arch=x64
+          echo "Building $version"
+          echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
+          echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
+          uv run python -c 'from platform import machine; print(f"macosx_14_0_{machine()}")' > dist/platform-tag
+          cat dist/platform-tag
+
+      #- name: Download and "install" libmagic for windows
+      #  working-directory: ./git-annex
+      #  run: |
+      #    gh release download -R datalad/file-windows -p file-windows-dist.zip
+      #    unzip file-windows-dist.zip
+      #    cp libmagic-1.dll libmagic.dll
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure build
+        run: |
+          echo OSX_MAGIC_FILE="$(brew list --verbose libmagic| grep magic.mgc | head -n 1)" >> "$GITHUB_ENV"
+          echo BUILDERCOMMONOPTIONS="" >> "$GITHUB_ENV"
+          echo BUILDER=stack >> "$GITHUB_ENV"
+          echo GHC="stack ghc --" >> "$GITHUB_ENV"
+
+      - name: Enable building with magic
+        working-directory: ./git-annex
+        run: |
+          perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
+
+      - name: Run stack --version
+        working-directory: ./git-annex
+        run: stack --version
+
+      - name: stack setup
+        working-directory: ./git-annex
+        run: stack setup
+
+      # At this point, stack.yaml.lock exists, so we can activate the cache
+
+      - name: Enable Stack cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.stack
+          key: cache-stack-macos14-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          restore-keys: |
+            cache-stack-macos14-
+
+      - name: Build dependencies
+        working-directory: ./git-annex
+        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD
+
+      - name: Update version info for git rev being built.
+        working-directory: ./git-annex
+        run: |
+          stack ghc --no-haddock Build/BuildVersion.hs
+          ./Build/BuildVersion > dist/build-version
+
+      - name: Build git-annex
+        working-directory: ./git-annex
+        run: stack install --no-haddock --local-bin-path .
+
+      - name: Explore
+        run: ls
+
+      - name: Explore git-annex
+        run: ls git-annex
+
+      - name: Build the Python wheel
+        run: |
+          uv build --wheel
+
+      #- name: Test git-annex
+      #  # Install the wheel and test that installation
+      #  run: |
+      #    uv venv
+      #    source .venv/bin/activate
+      #    uv pip install dist/git_annex-*.whl
+      #    git-annex version
+      #    git-annex test
+
+      - name: PyPi upload
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
+        run: uv publish

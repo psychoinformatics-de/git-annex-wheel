@@ -1,0 +1,3 @@
+[submodule "git-annex"]
+	path = git-annex
+	url = git://git-annex.branchable.com/

@@ -1,0 +1,122 @@
+name: Build git-annex on Linux
+
+on:
+  push:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  LANG: C.utf-8
+
+jobs:
+  build-package:
+    # choose the oldest one to get the oldest GLIBC
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Checkout git-annex
+        # we exclude doc/ -- it has filenames so long that the FS
+        # on windows barfs
+        # we fetch shallow, assuming the last 2 months still have a
+        # usable tag to determine a version
+        run: |
+          git submodule init git-annex
+          git clone --no-checkout --shallow-since 2.month.ago $(git config submodule.git-annex.url) git-annex
+          git submodule update --init --recursive --force git-annex
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup system
+        run: |
+          sudo apt-get update -y && sudo apt-get install patchelf
+          uv tool install auditwheel
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+
+      - name: Get build version
+        id: build-version
+        working-directory: ./git-annex
+        run: |
+          mkdir -p dist
+          version="$(git describe HEAD | sed -e 's/-/+git/')"
+          arch=x64
+          echo "Building $version"
+          echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
+          echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
+          echo -n "linux_x86_64" > dist/platform-tag
+
+      - name: Enable building with magic, but without the assistant
+        working-directory: ./git-annex
+        run: |
+          sed -i -e 's/magicmime: false/magicmime: true/' -e 's/assistant: true/assistant: false/' stack.yaml
+
+      - name: Run stack --version
+        working-directory: ./git-annex
+        run: stack --version
+
+      - name: stack setup
+        working-directory: ./git-annex
+        run: stack setup
+
+      # At this point, stack.yaml.lock exists, so we can activate the cache
+
+      - name: Enable Stack cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.stack
+          key: cache-stack-linux-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          restore-keys: |
+            cache-stack-linux-
+
+      - name: Build dependencies
+        working-directory: ./git-annex
+        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD
+
+      - name: Update version info for git rev being built.
+        working-directory: ./git-annex
+        run: |
+          stack ghc --no-haddock Build/BuildVersion.hs
+          ./Build/BuildVersion > dist/build-version
+
+      - name: Build git-annex
+        working-directory: ./git-annex
+        run: stack install --no-haddock --local-bin-path .
+
+      #- name: TAG
+      #  run: |
+      #    echo -n "manylinux_$(objdump -T git-annex/git-annex | grep GLIBC_ | sed -e 's/.*GLIBC_\([^\)]\+\).*/\1/' | sort -V | tail -1 | tr '.' '_')_x86_64" > git-annex/dist/platform-tag
+      #    cat git-annex/dist/platform-tag
+
+      - name: Build the Python wheel
+        run: |
+          uv build --wheel
+
+      - name: Build self-contained wheel
+        run: |
+          uvx auditwheel repair -w tuned -z 9 dist/*.whl
+          uvx auditwheel show tuned/*.whl
+
+      - name: Test git-annex
+        # Install the wheel and test that installation
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install tuned/git_annex-*.whl
+          git-annex version
+          git-annex test
+
+      - name: PyPi upload
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
+        run: uv publish tuned/*

@@ -51,17 +51,8 @@ jobs:
           echo "Building $version"
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
-          uv run python -c 'from platform import machine; print(f"macosx_13_0_{machine()}")' > dist/platform-tag
+          uv run --no-project python -c 'from platform import machine; print(f"macosx_13_0_{machine()}")' > dist/platform-tag
           cat dist/platform-tag
-
-      #- name: Download and "install" libmagic for windows
-      #  working-directory: ./git-annex
-      #  run: |
-      #    gh release download -R datalad/file-windows -p file-windows-dist.zip
-      #    unzip file-windows-dist.zip
-      #    cp libmagic-1.dll libmagic.dll
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure build
         run: |
@@ -74,6 +65,7 @@ jobs:
         working-directory: ./git-annex
         run: |
           perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
+          perl -pli -e 's/assistant: true/assistant: false/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

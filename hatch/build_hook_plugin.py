@@ -24,22 +24,17 @@ class SpecialBuildHook(BuildHookInterface):
         build_data['tag'] = f'py3-none-{platform_tag}'
 
         if platform_id.startswith('win'):
-            # assumes that git-has been built with libmagic support in the
+            # assumes that git-annex has been built with libmagic support in the
             # way that the github action does
-            build_data['shared_data']['git-annex/libmagic-1.dll'] = \
-                'Scripts/libmagic-1.dll'
-            build_data['shared_data']['git-annex/libgnurx-0.dll'] = \
-                'Scripts/libgnurx-0.dll'
-            build_data['shared_data']['git-annex/file.exe'] = \
-                'Scripts/file.exe'
-            build_data['shared_data']['git-annex/magic.mgc'] = \
-                'Scripts/magic.mgc'
-            build_data['shared_data']['git-annex/git-annex.exe'] = \
-                'Scripts/git-annex.exe'
+            for k, v in (
+                # from, to
+                ('git-annex/git-annex.exe', 'git_annex/git-annex.exe'),
+                ('git-annex/magic.mgc', 'git_annex/magic.mgc'),
+                ('git-annex/libmagic-1.dll', 'git_annex/libmagic-1.dll'),
+                ('git-annex/libgnurx-0.dll', 'git_annex/libgnurx-0.dll'),
+            ):
+                build_data['force_include'][k] = v
         else:
-            #breakpoint()
-            #build_data['shared_data']['git-annex/git-annex'] = \
-            #    'platlib/git-annex'
             build_data['force_include']['git-annex/git-annex'] = \
                 'git_annex/git-annex'
 

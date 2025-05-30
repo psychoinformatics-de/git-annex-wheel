@@ -13,7 +13,10 @@ def cli():
     try:
         subprocess.run(
             args,
-            executable=op.join(exe_dir, 'git-annex'),
+            executable=op.join(
+                exe_dir,
+                f'git-annex{".exe" if sys.platform.startswith("win") else ""}',
+            ),
             shell=False,
             check=True,
         )
@@ -22,7 +25,7 @@ def cli():
         # (happens if the calling process closed stdout
         # already
         sys.stdout.flush()
-    except (BrokenPipeError, IOError):
+    except BrokenPipeError:
         # setting it to None prevents Python from trying to
         # flush again
         sys.stdout = None

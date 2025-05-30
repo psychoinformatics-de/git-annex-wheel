@@ -52,7 +52,7 @@ jobs:
           echo "Building $version"
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
-          uv run python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
+          uv run --no-project python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
 
       - name: Download and "install" libmagic for windows
         working-directory: ./git-annex
@@ -66,7 +66,7 @@ jobs:
       - name: Enable building with magic
         working-directory: ./git-annex
         run: |
-          perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
+          sed -i -e 's/magicmime: false/magicmime: true/' -e 's/assistant: true/assistant: false/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex
@@ -104,12 +104,14 @@ jobs:
         run: |
           uv build --wheel
 
-      - name: Test git-annex
-        # Install the wheel and test that installation
-        run: |
-          uv pip install --system dist/git_annex-*.whl
-          git-annex version
-          git-annex test
+      # Reenable when https://github.com/psychoinformatics-de/git-annex-wheel/issues/5
+      # is fixed
+      #- name: Test git-annex
+      #  # Install the wheel and test that installation
+      #  run: |
+      #    uv pip install --system dist/git_annex-*.whl
+      #    git-annex version
+      #    git-annex test
 
       - name: PyPi upload
         env:

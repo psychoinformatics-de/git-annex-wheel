@@ -3,7 +3,7 @@
 # git-annex uses a version scheme that needs to be amended to match
 # PyPi's requirements. Moreover, for any given upstream version,
 # we must be able to build multiple package versions.
-version = "10.20250520a9"
+version = "10.20250520b1"
 authors = [
   { name = "Joey Hess", email = "id@joeyh.name" },
 ]
@@ -42,7 +42,7 @@ name = "git-annex"
 readme = "README.md"
 requires-python = ">=3.9"
 
-[project.gui-scripts]
+[project.scripts]
 git-annex = "git_annex:cli"
 git-annex-shell = "git_annex:cli"
 git-remote-annex = "git_annex:cli"
@@ -62,8 +62,6 @@ requires = [
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# we need to ship at least one file
-#only-include = ["python/py.typed"]
 packages = ["src/git_annex"]
 
 [tool.hatch.build.targets.wheel.sources]
@@ -72,7 +70,7 @@ packages = ["src/git_annex"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 # custom build hook to set some metadata
-path = "python/build_hook_plugin.py"
+path = "hatch/build_hook_plugin.py"
 # if set, actually perform a build. Otherwise assume that
 # the built binary is in bin/
 #build = "stack"

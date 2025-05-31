@@ -34,9 +34,6 @@ class SpecialBuildHook(BuildHookInterface):
                 ('git-annex/libgnurx-0.dll', 'git_annex/libgnurx-0.dll'),
             ):
                 build_data['force_include'][k] = v
-        else:
-            build_data['force_include']['git-annex/git-annex'] = \
-                'git_annex/git-annex'
 
         build_cmds = []
         if self.config.get('build') == 'stack':

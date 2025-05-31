@@ -42,12 +42,6 @@ name = "git-annex"
 readme = "README.md"
 requires-python = ">=3.9"
 
-[project.scripts]
-git-annex = "git_annex:cli"
-git-annex-shell = "git_annex:cli"
-git-remote-annex = "git_annex:cli"
-git-remote-tor-annex = "git_annex:cli"
-
 [project.urls]
 Homepage = "https://git-annex.branchable.com/"
 Documentation = "https://git-annex.branchable.com/git-annex"
@@ -62,11 +56,14 @@ requires = [
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/git_annex"]
+# Hatch requires some kind of specification. Use a missing dir to shut it up.
+packages = ["git_annex"]
 
-[tool.hatch.build.targets.wheel.sources]
-# give the 'only-include' files a base directory in the wheel
-"python" = "git-annex"
+[tool.hatch.build.targets.wheel.shared-scripts]
+"git-annex/git-annex" = "git-annex"
+"scripts/git-annex-shell" = "git-annex-shell"
+"scripts/git-remote-annex" = "git-remote-annex"
+"scripts/git-remote-tor-annex" = "git-remote-tor-annex"
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 # custom build hook to set some metadata

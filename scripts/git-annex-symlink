@@ -1,0 +1,20 @@
+#!python
+"""Emulate a symlink to a binary.
+
+This script calls a binary installed into the same directory as the script,
+passing the `argv` list (including a potentially different executable name).
+
+This approach provides a cross-platform alternative for binaries that are
+typically installed with symlinks to access different behaviors.
+"""
+
+import os
+import sys
+
+os.execv(
+    os.path.join(
+        os.path.dirname(__file__),
+        f"git-annex{'.exe' if sys.platform.startswith('win') else ''}",
+    ),
+    sys.argv,
+)

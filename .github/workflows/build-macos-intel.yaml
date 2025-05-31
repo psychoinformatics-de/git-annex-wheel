@@ -101,12 +101,18 @@ jobs:
         run: |
           uv build --wheel
 
-      - name: Test git-annex
-        # Install the wheel and test that installation
+      - name: Inspect and install
         run: |
+          unzip -l dist/git_annex-*.whl
           uv venv
           source .venv/bin/activate
           uv pip install dist/git_annex-*.whl
+          ls -lR .venv
+
+      - name: Test git-annex
+        # Install the wheel and test that installation
+        run: |
+          source .venv/bin/activate
           git-annex version
           git-annex test
 

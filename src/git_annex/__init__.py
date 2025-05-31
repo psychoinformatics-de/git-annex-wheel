@@ -3,6 +3,13 @@ import os.path as op
 import sys
 
 
+def get_executable():
+    return op.join(
+        op.dirname(__file__),
+        f'git-annex{".exe" if sys.platform.startswith("win") else ""}',
+    )
+
+
 def cli():
     """Emulate a symlink to a binary.
 
@@ -18,8 +25,4 @@ def cli():
     without symlink support, and also in packages that cannot represent
     symlinks.
     """
-    executable = op.join(
-        op.dirname(__file__),
-        f'git-annex{".exe" if sys.platform.startswith("win") else ""}',
-    )
-    os.execv(executable, sys.argv)
+    os.execv(get_executable(), sys.argv)

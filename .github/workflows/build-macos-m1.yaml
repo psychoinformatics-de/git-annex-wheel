@@ -85,7 +85,7 @@ jobs:
 
       - name: Build dependencies
         working-directory: ./git-annex
-        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD
+        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD --extra-include-dirs=/opt/homebrew/include --extra-lib-dirs=/opt/homebrew/lib
 
       - name: Update version info for git rev being built.
         working-directory: ./git-annex

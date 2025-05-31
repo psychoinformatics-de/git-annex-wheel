@@ -2,6 +2,7 @@
 
 sed -e 's,^Files: ,Files: git-annex/,' < git-annex/COPYRIGHT > COPYRIGHT
 cat << EOT >> COPYRIGHT
+
 Files: .github/*
 Copyright: © 2020- John T. Wodder II <git@varonathe.org>
            © 2020- Yaroslav Halchenko <debian@onerussian.com>

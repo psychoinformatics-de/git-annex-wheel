@@ -22,11 +22,11 @@ jobs:
       - name: Checkout git-annex
         # we exclude doc/ -- it has filenames so long that the FS
         # on windows barfs
-        # we fetch shallow, assuming the last 2 months still have a
+        # we fetch shallow, assuming the last 6 months still have a
         # usable tag to determine a version
         run: |
           git submodule init git-annex
-          git clone --no-checkout --shallow-since 2.month.ago $(git config submodule.git-annex.url) git-annex
+          git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
           git submodule update --init --recursive --force git-annex
 
       - name: Install uv
@@ -51,17 +51,8 @@ jobs:
           echo "Building $version"
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
-          uv run python -c 'from platform import machine; print(f"macosx_14_0_{machine()}")' > dist/platform-tag
+          uv run --no-project python -c 'from platform import machine; print(f"macosx_14_0_{machine()}")' > dist/platform-tag
           cat dist/platform-tag
-
-      #- name: Download and "install" libmagic for windows
-      #  working-directory: ./git-annex
-      #  run: |
-      #    gh release download -R datalad/file-windows -p file-windows-dist.zip
-      #    unzip file-windows-dist.zip
-      #    cp libmagic-1.dll libmagic.dll
-      #  env:
-      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure build
         run: |
@@ -74,6 +65,7 @@ jobs:
         working-directory: ./git-annex
         run: |
           perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
+          perl -pli -e 's/assistant: true/assistant: false/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex
@@ -84,7 +76,6 @@ jobs:
         run: stack setup
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
-
       - name: Enable Stack cache
         uses: actions/cache@v4
         with:
@@ -107,24 +98,18 @@ jobs:
         working-directory: ./git-annex
         run: stack install --no-haddock --local-bin-path .
 
-      - name: Explore
-        run: ls
-
-      - name: Explore git-annex
-        run: ls git-annex
-
       - name: Build the Python wheel
         run: |
           uv build --wheel
 
-      #- name: Test git-annex
-      #  # Install the wheel and test that installation
-      #  run: |
-      #    uv venv
-      #    source .venv/bin/activate
-      #    uv pip install dist/git_annex-*.whl
-      #    git-annex version
-      #    git-annex test
+      - name: Test git-annex
+        # Install the wheel and test that installation
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install dist/git_annex-*.whl
+          git-annex version
+          git-annex test
 
       - name: PyPi upload
         env:

@@ -23,11 +23,11 @@ jobs:
       - name: Checkout git-annex
         # we exclude doc/ -- it has filenames so long that the FS
         # on windows barfs
-        # we fetch shallow, assuming the last 2 months still have a
+        # we fetch shallow, assuming the last 6 months still have a
         # usable tag to determine a version
         run: |
           git submodule init git-annex
-          git clone --no-checkout --shallow-since 2.month.ago $(git config submodule.git-annex.url) git-annex
+          git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
           git submodule update --init --recursive --force git-annex
 
       - name: Install uv
@@ -70,7 +70,6 @@ jobs:
         run: stack setup
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
-
       - name: Enable Stack cache
         uses: actions/cache@v4
         with:
@@ -92,11 +91,6 @@ jobs:
       - name: Build git-annex
         working-directory: ./git-annex
         run: stack install --no-haddock --local-bin-path .
-
-      #- name: TAG
-      #  run: |
-      #    echo -n "manylinux_$(objdump -T git-annex/git-annex | grep GLIBC_ | sed -e 's/.*GLIBC_\([^\)]\+\).*/\1/' | sort -V | tail -1 | tr '.' '_')_x86_64" > git-annex/dist/platform-tag
-      #    cat git-annex/dist/platform-tag
 
       - name: Build the Python wheel
         run: |

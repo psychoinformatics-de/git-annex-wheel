@@ -22,11 +22,11 @@ jobs:
       - name: Sparse checkout git-annex
         # we exclude doc/ -- it has filenames so long that the FS
         # on windows barfs
-        # we fetch shallow, assuming the last 2 months still have a
+        # we fetch shallow, assuming the last 6 months still have a
         # usable tag to determine a version
         run: |
           git submodule init git-annex
-          git clone --no-checkout --shallow-since 2.month.ago $(git config submodule.git-annex.url) git-annex
+          git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
           git -C git-annex sparse-checkout set --no-cone '/*' '!/doc/*'
           git submodule update --init --recursive --force git-annex
 
@@ -104,14 +104,12 @@ jobs:
         run: |
           uv build --wheel
 
-      # Reenable when https://github.com/psychoinformatics-de/git-annex-wheel/issues/5
-      # is fixed
-      #- name: Test git-annex
-      #  # Install the wheel and test that installation
-      #  run: |
-      #    uv pip install --system dist/git_annex-*.whl
-      #    git-annex version
-      #    git-annex test
+      - name: Test git-annex
+        # Install the wheel and test that installation
+        run: |
+          uv pip install --system dist/git_annex-*.whl
+          git-annex version
+          git-annex test
 
       - name: PyPi upload
         env:

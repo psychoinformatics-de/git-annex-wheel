@@ -68,6 +68,18 @@ to be deployed separately.
 
 ## Developer information
 
+### Sources
+
+The sources for this package are available at
+https://github.com/psychoinformatics-de/git-annex-wheel
+
+The repository tracks the git-annex sources as a Git submodule.
+
+### Issues
+
+For issues related to the Python wheel packaging of git-annex, please
+use the tracker at https://github.com/psychoinformatics-de/git-annex-wheel/issues
+
 ### How to update for a new git-annex release?
 
 Advance the submodule `./git-annex` to the new release tag.

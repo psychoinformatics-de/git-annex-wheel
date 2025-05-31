@@ -1,5 +1,5 @@
+import os
 import os.path as op
-import subprocess
 import sys
 
 
@@ -10,27 +10,29 @@ def cli():
     with the package, but using the `argv` list (including a potentially
     different executable name) pass to the script itself.
 
-    It relies on the `executable` argument of `subprocess.run()` to achieve
-    this.
+    On Unix-like systems, it `exec`s the binary, replacing the current process.
+    Windows does not support `exec`, so in that case, it relies on the
+    `executable` argument of `subprocess.run()` to achieve this.
 
     This approach provides alternative means for git-annex's installation
     method with symlinks pointing to a single binary, and works on platforms
     without symlink support, and also in packages that cannot represent
     symlinks.
     """
-    exe_dir = op.dirname(__file__)
-    exe = op.join(
-        exe_dir,
-        op.basename(sys.argv[0]),
-    )
-    args = [exe] + sys.argv[1:]
+    exe = op.join(op.dirname(__file__), 'git-annex')
+    if sys.platform.startswith('win'):
+        exec_subproc(f'{exe}.exe', sys.argv)
+    else:
+        os.execv(exe, sys.argv)
+
+
+def exec_subproc(executable, argv):
+    import subprocess
+
     try:
         subprocess.run(
-            args,
-            executable=op.join(
-                exe_dir,
-                f'git-annex{".exe" if sys.platform.startswith("win") else ""}',
-            ),
+            argv,
+            executable=executable,
             shell=False,
             check=True,
         )

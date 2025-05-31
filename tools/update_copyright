@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sed -e 's,^Files: ,Files: git-annex/,' < git-annex/COPYRIGHT > COPYRIGHT
+cat << EOT >> COPYRIGHT
+Files: .github/*
+Copyright: © 2020- John T. Wodder II <git@varonathe.org>
+           © 2020- Yaroslav Halchenko <debian@onerussian.com>
+           © 2025- Michael Hanke <mih@ngln.eu>
+License: AGPL-3+
+
+Files: src/* hatch/*
+Copyright: © 2025- Michael Hanke <mih@ngln.eu>
+License: AGPL-3+
+EOT

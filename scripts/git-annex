@@ -1,0 +1,7 @@
+#!python
+import os
+import sys
+
+import git_annex
+
+os.execv(git_annex.get_executable(), sys.argv)

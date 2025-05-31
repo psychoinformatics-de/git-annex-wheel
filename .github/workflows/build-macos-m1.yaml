@@ -65,7 +65,6 @@ jobs:
         working-directory: ./git-annex
         run: |
           perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
-          perl -pli -e 's/assistant: true/assistant: false/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

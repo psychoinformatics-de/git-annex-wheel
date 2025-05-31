@@ -56,10 +56,10 @@ jobs:
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
           echo -n "linux_x86_64" > dist/platform-tag
 
-      - name: Enable building with magic, but without the assistant
+      - name: Enable building with magic
         working-directory: ./git-annex
         run: |
-          sed -i -e 's/magicmime: false/magicmime: true/' -e 's/assistant: true/assistant: false/' stack.yaml
+          sed -i -e 's/magicmime: false/magicmime: true/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

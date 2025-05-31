@@ -66,7 +66,7 @@ jobs:
       - name: Enable building with magic
         working-directory: ./git-annex
         run: |
-          sed -i -e 's/magicmime: false/magicmime: true/' -e 's/assistant: true/assistant: false/' stack.yaml
+          sed -i -e 's/magicmime: false/magicmime: true/' stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

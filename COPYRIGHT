@@ -842,6 +842,7 @@ License: AGPL-3+
   if any, to sign a "copyright disclaimer" for the program, if necessary.
   For more information on this, and how to apply and follow the GNU AGPL, see
   <http://www.gnu.org/licenses/>.
+
 Files: .github/*
 Copyright: © 2020- John T. Wodder II <git@varonathe.org>
            © 2020- Yaroslav Halchenko <debian@onerussian.com>
@@ -850,4 +851,5 @@ License: AGPL-3+
 
 Files: src/* hatch/*
 Copyright: © 2025- Michael Hanke <mih@ngln.eu>
+           © 2025- Christopher J. Markiewicz <markiewicz@stanford.edu>
 License: AGPL-3+

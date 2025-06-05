@@ -33,7 +33,9 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Set up system
-        run: brew install libmagic pkg-config
+        run: |
+          brew install libmagic pkg-config
+          uv tool install delocate
 
       - name: Setup Haskell
         uses: haskell-actions/setup@v2
@@ -101,12 +103,17 @@ jobs:
         run: |
           uv build --wheel
 
+      - name: Build self-contained wheel
+        run: |
+          delocate-wheel -w tuned -v dist/*.whl
+          delocate-listdeps --all tuned/*
+
       - name: Inspect and install
         run: |
-          unzip -l dist/git_annex-*.whl
+          unzip -l tuned/git_annex-*.whl
           uv venv
           source .venv/bin/activate
-          uv pip install dist/git_annex-*.whl
+          uv pip install tuned/git_annex-*.whl
           ls -lR .venv
 
       - name: Test git-annex

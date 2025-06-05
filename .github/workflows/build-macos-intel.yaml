@@ -126,4 +126,4 @@ jobs:
       - name: PyPi upload
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
-        run: uv publish
+        run: uv publish tuned/*

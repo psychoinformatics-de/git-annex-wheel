@@ -29,7 +29,6 @@ class SpecialBuildHook(BuildHookInterface):
             for k, v in (
                 # from, to
                 ('git-annex/git-annex.exe', 'git_annex/git-annex.exe'),
-                ('git-annex/magic.mgc', 'git_annex/magic.mgc'),
                 ('git-annex/libmagic-1.dll', 'git_annex/libmagic-1.dll'),
                 ('git-annex/libgnurx-0.dll', 'git_annex/libgnurx-0.dll'),
             ):
@@ -37,6 +36,11 @@ class SpecialBuildHook(BuildHookInterface):
         else:
             build_data['force_include']['git-annex/git-annex'] = \
                 'git_annex/git-annex'
+
+        # if the build process produced a file magic DB, we ship it
+        if Path('git-annex', 'magic.mgc').exists():
+            build_data['force_include']['git-annex/magic.mgc'] = \
+                'git_annex/magic.mgc'
 
         build_cmds = []
         if self.config.get('build') == 'stack':

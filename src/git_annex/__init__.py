@@ -19,7 +19,15 @@ def cli():
     without symlink support, and also in packages that cannot represent
     symlinks.
     """
-    exe = op.join(op.dirname(__file__), 'git-annex')
+    exedir = op.dirname(__file__)
+    exe = op.join(exedir, 'git-annex')
+    if sys.platform.startswith('darwin'):
+        # we look for an embedded file magic DB,
+        # and instruct libmagic to use it
+        embedded_magic = op.join(exedir, 'magic.mgc')
+        if op.exists(embedded_magic):
+            os.environ['MAGIC'] = embedded_magic
+
     if sys.platform.startswith('win'):
         exec_subproc(f'{exe}.exe', sys.argv)
     else:

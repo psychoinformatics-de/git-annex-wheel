@@ -99,6 +99,9 @@ jobs:
         working-directory: ./git-annex
         run: stack install --no-haddock --local-bin-path .
 
+      - name: Embed magic.mgc
+        run: cp -v "$(brew list --verbose libmagic| grep magic.mgc | head -n 1)" ./git-annex
+
       - name: Build the Python wheel
         run: |
           uv build --wheel

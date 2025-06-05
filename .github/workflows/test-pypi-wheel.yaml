@@ -1,0 +1,43 @@
+name: Test git-annex wheel from PyPi
+
+on:
+  schedule:
+    - cron: '5 23 * * *'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  LANG: C.utf-8
+
+jobs:
+  test-wheel:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-22.04
+          - windows-latest
+          - windows-2022
+          - macos-latest
+          - macos-14
+          - macos-13
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install git-annex
+        run: |
+          uv tool install git-annex
+
+      - name: Which git-annex
+        run: |
+          git annex version
+
+      - name: Test git-annex
+        run: |
+          git annex test

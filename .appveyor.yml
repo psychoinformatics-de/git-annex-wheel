@@ -1,0 +1,68 @@
+# turn of support for MS project build support (not needed)
+build: off
+
+environment:
+  UV_CACHE: /home/appveyor/.cache/uv
+  matrix:
+    - job_name: ubu1804
+      APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
+
+for:
+  - matrix:
+      only:
+        - job_name: ubu1804
+
+    cache:
+      # pip cache
+      - "${UV_CACHE} -> .appveyor.yml"
+      - "${HOME}/.stack -> .appveyor.yml"
+
+    init:
+      # LOGIN: enable external SSH access to CI worker
+      # needs APPVEYOR_SSH_KEY defined in project settings (or environment)
+      #- curl -sflL 'https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-ssh.sh' | bash -e -
+      # install `uv`
+      - curl -LsSf https://astral.sh/uv/install.sh | sh
+      - source $HOME/.local/bin/env
+      # missing tools
+      #- sudo apt-get update --allow-insecure-repositories -y && sudo apt-get install patchelf
+      - sudo apt-get -y install patchelf libmagic-dev moreutils
+      - uv tool install auditwheel
+      # install stack (works on linux, OSX, and windows)
+      - curl -sSL https://get.haskellstack.org/ | sh
+
+    install:
+      # Checkout git-annex
+      # we fetch shallow, assuming the last 6 months still have a
+      # usable tag to determine a version
+      - git submodule init git-annex
+      - git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
+      - git submodule update --init --recursive --force git-annex
+
+    before_build:
+      - |
+          ( cd git-annex
+            sed -i -e 's/magicmime: false/magicmime: true/' stack.yaml
+            mkdir dist
+            echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
+            echo -n "linux_x86_64" > dist/platform-tag
+          )
+      - stack --version
+      - ( cd git-annex && chronic stack setup )
+
+    build_script:
+      - cat git-annex/dist/pypi-version
+      - ( cd git-annex && chronic stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD )
+      - ( cd git-annex && chronic stack ghc --no-haddock Build/BuildVersion.hs )
+      - ( cd git-annex && ./Build/BuildVersion > git-annex/dist/build-version
+      - ( cd git-annex && stack install --no-haddock --local-bin-path . )
+      - uv build --wheel
+
+    after_build:
+      - uvx auditwheel repair -w tuned -z 9 dist/*.whl
+      - uvx auditwheel show tuned/*.whl
+
+    test_script:
+      - uv tool install tuned/*.whl
+      - git-annex version
+      - git-annex test

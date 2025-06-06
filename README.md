@@ -1,5 +1,7 @@
 # Python wheel package for git-annex
 
+[![Test git-annex wheel from PyPi](https://github.com/psychoinformatics-de/git-annex-wheel/actions/workflows/test-pypi-wheel.yaml/badge.svg)](https://github.com/psychoinformatics-de/git-annex-wheel/actions/workflows/test-pypi-wheel.yaml)
+
 ## Why?
 
 [Git-annex](https://git-annex.branchable.com/) is written in Haskell and plenty

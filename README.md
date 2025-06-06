@@ -43,10 +43,7 @@ uv tool install git-annex
 
 ## git-annex build configuration
 
-Git-annex is built with libmagic support, but without the git-annex assistant.
-The primary purpose of this package is to provide git-annex (as a dependency),
-installed in a virtual environment. Users of the git-annex assistant application
-likely install git-annex via any of its platform packages.
+Git-annex is built with libmagic support.
 
 ## Platform notes
 
@@ -64,8 +61,7 @@ The wheel is self-contained and includes a copy of libmagic and the `magic.mgc` 
 
 ### Mac
 
-Git-annex is built with libmagic support, but the library is not included and needs
-to be deployed separately.
+The wheel is self-contained and includes a copy of libmagic and the `magic.mgc` database.
 
 
 ## Developer information

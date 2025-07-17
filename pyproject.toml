@@ -3,7 +3,7 @@
 # git-annex uses a version scheme that needs to be amended to match
 # PyPi's requirements. Moreover, for any given upstream version,
 # we must be able to build multiple package versions.
-version = "10.20250630"
+version = "10.20250721"
 authors = [
   { name = "Joey Hess", email = "id@joeyh.name" },
 ]

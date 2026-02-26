@@ -2,6 +2,7 @@ name: Build git-annex on Linux (arm64)
 
 on:
   push:
+  pull_request:
 
 defaults:
   run:
@@ -121,3 +122,4 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
         run: uv publish tuned/*
+        if: github.event_name != 'pull_request'

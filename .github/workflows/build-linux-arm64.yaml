@@ -13,7 +13,8 @@ env:
 jobs:
   build-package:
     # choose the oldest one to get the oldest GLIBC
-    runs-on: ubuntu-22.04-arm64
+    # from https://github.com/actions/partner-runner-images
+    runs-on: ubuntu-22.04-arm
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4

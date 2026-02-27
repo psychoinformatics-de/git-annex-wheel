@@ -13,7 +13,10 @@ env:
 jobs:
   build-package:
     # choose the oldest one to get the oldest GLIBC
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-22.04', 'ubuntu-22.04-arm']
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -74,9 +77,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.stack
-          key: cache-stack-linux-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          key: cache-stack-${{ matrix.os }}-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
           restore-keys: |
-            cache-stack-linux-
+            cache-stack-${{ matrix.os }}-
 
       - name: Build dependencies
         working-directory: ./git-annex

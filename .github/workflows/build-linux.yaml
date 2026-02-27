@@ -113,13 +113,22 @@ jobs:
         run: stack setup
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
-      - name: Enable Stack cache
+      - name: Enable Stack cache (Linux/Mac)
         uses: actions/cache@v4
         with:
           path: ~/.stack
           key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
           restore-keys: |
             cache-stack-${{ matrix.os }}-x-
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
+      - name: Enable Stack cache (Windows)
+        uses: actions/cache@v4
+        with:
+          path: 'C:\sr\snapshots'
+          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
+          restore-keys: |
+            cache-stack-${{ matrix.os }}-x-
+        if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: Build dependencies
         working-directory: ./git-annex

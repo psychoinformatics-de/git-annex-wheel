@@ -1,7 +1,10 @@
-name: Build git-annex on Linux
+name: Build git-annex
 
 on:
   push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 defaults:
   run:
@@ -12,8 +15,17 @@ env:
 
 jobs:
   build-package:
-    # choose the oldest one to get the oldest GLIBC
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Choose oldest Linux to get the oldest GLIBC
+        os:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - windows-2022
+          - macos-14
+          - macos-15-intel
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -28,15 +40,27 @@ jobs:
         run: |
           git submodule init git-annex
           git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
+          git -C git-annex sparse-checkout set --no-cone '/*' '!/doc/*'
           git submodule update --init --recursive --force git-annex
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
-      - name: Setup system
+      - name: Install patchelf, auditwheel (Linux)
         run: |
           sudo apt-get update -y && sudo apt-get install patchelf
           uv tool install auditwheel
+        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+
+      - name: Handle long filenames (Windows)
+        run: git config --system core.longpaths true
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
+      - name: Install libmagic, delocate (Mac)
+        run: |
+          brew install libmagic pkg-config
+          uv tool install delocate
+        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - name: Setup Haskell
         uses: haskell-actions/setup@v2
@@ -54,7 +78,26 @@ jobs:
           echo "Building $version"
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
-          echo -n "linux_x86_64" > dist/platform-tag
+          uv run --no-project python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
+          cat dist/platform-tag
+
+      - name: Download and "install" libmagic (Windows)
+        working-directory: ./git-annex
+        run: |
+          gh release download -R datalad/file-windows -p file-windows-dist.zip
+          unzip file-windows-dist.zip
+          cp libmagic-1.dll libmagic.dll
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
+      - name: Configure build (Mac)
+        run: |
+          echo OSX_MAGIC_FILE="$(brew list --verbose libmagic| grep magic.mgc | head -n 1)" >> "$GITHUB_ENV"
+          echo BUILDERCOMMONOPTIONS="" >> "$GITHUB_ENV"
+          echo BUILDER=stack >> "$GITHUB_ENV"
+          echo GHC="stack ghc --" >> "$GITHUB_ENV"
+        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - name: Enable building with magic
         working-directory: ./git-annex
@@ -70,17 +113,27 @@ jobs:
         run: stack setup
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
-      - name: Enable Stack cache
+      - name: Enable Stack cache (Linux/Mac)
         uses: actions/cache@v4
         with:
           path: ~/.stack
-          key: cache-stack-linux-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
           restore-keys: |
-            cache-stack-linux-
+            cache-stack-${{ matrix.os }}-x-
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
+      - name: Enable Stack cache (Windows)
+        uses: actions/cache@v4
+        with:
+          path: 'C:\sr\snapshots'
+          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
+          restore-keys: |
+            cache-stack-${{ matrix.os }}-x-
+        if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: Build dependencies
         working-directory: ./git-annex
-        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD
+        # Homebrew doesn't exist on Windows/Linux, but hopefully it just fails silently
+        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD --extra-include-dirs=/opt/homebrew/include --extra-lib-dirs=/opt/homebrew/lib
 
       - name: Update version info for git rev being built.
         working-directory: ./git-annex
@@ -92,34 +145,128 @@ jobs:
         working-directory: ./git-annex
         run: stack install --no-haddock --local-bin-path .
 
-      - name: Embed magic.mgc
+      - name: Embed magic.mgc (Linux)
         run: cp -Lv "$(dpkg -L libmagic-mgc | grep magic.mgc | head -n 1)" ./git-annex
+        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+
+      - name: Embed magic.mgc (Mac)
+        run: cp -v "$(brew list --verbose libmagic| grep magic.mgc | head -n 1)" ./git-annex
+        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - name: Build the Python wheel
         run: |
           uv build --wheel
 
-      - name: Build self-contained wheel
+      - name: Audit wheel (Linux)
         run: |
-          uvx auditwheel repair -w tuned -z 9 dist/*.whl
-          uvx auditwheel show tuned/*.whl
+          mv dist orig
+          uvx auditwheel repair -w dist -z 9 orig/*.whl
+          uvx auditwheel show dist/*.whl
+        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+
+      - name: Delocate wheel (Mac)
+        run: |
+          mv dist orig
+          delocate-wheel -w dist -v orig/*.whl
+          delocate-listdeps --all dist/*
+        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - name: Inspect and install
         run: |
-          unzip -l tuned/git_annex-*.whl
+          unzip -l dist/git_annex-*.whl
           uv venv
-          source .venv/bin/activate
-          uv pip install tuned/git_annex-*.whl
+          source .venv/*/activate
+          uv pip install dist/git_annex-*.whl
           ls -lR .venv
 
-      - name: Test git-annex
-        # Install the wheel and test that installation
-        run: |
-          source .venv/bin/activate
-          git-annex version
-          git-annex test
+      - name: Save wheel as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheel-${{ matrix.os }}
+          path: dist
 
-      - name: PyPi upload
+  aggregate:
+    runs-on: ${{ matrix.os }}
+    needs: [build-package]
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          path: dist
+
+      - name: List wheels
+        run: ls -lR dist
+
+      - name: Aggregate wheels
+        run: |
+          mv dist/*/*.whl dist/
+          rmdir dist/*/
+
+      - name: Save wheels as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: all-wheels
+          path: dist
+
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: [aggregate]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - macos-latest
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - windows-2022
+          - macos-15-intel
+          - macos-14
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v7
+        with:
+          name: all-wheels
+          path: dist
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
+      - name: Install git-annex
+        run: |
+          # --find-links installs from local directory
+          # Use --offline to make doubly sure we don't pull from PyPI
+          uv tool install -v --offline --find-links dist/ git-annex
+
+      - name: Which git-annex
+        run: |
+          git annex version
+
+      - name: Test git-annex
+        run: |
+          git annex test
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v7
+        with:
+          name: all-wheels
+          path: dist
+
+      - name: PyPI upload
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
-        run: uv publish tuned/*
+        run: uv publish dist/*

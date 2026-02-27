@@ -85,9 +85,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.stack
-          key: cache-stack-${{ matrix.os }}-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
           restore-keys: |
-            cache-stack-${{ matrix.os }}-
+            cache-stack-${{ matrix.os }}-x-
 
       - name: Build dependencies
         working-directory: ./git-annex

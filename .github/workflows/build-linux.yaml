@@ -1,4 +1,4 @@
-name: Build git-annex on Linux
+name: Build git-annex
 
 on:
   push:
@@ -15,14 +15,12 @@ env:
 
 jobs:
   build-package:
-    # choose the oldest one to get the oldest GLIBC
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {os: 'ubuntu-22.04', arch: 'x86_64'}
-          - {os: 'ubuntu-22.04-arm', arch: 'aarch64'}
+        # Choose oldest Linux to get the oldest GLIBC
+        os: ['ubuntu-22.04', 'ubuntu-22.04-arm', 'windows-2022']
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -49,6 +47,10 @@ jobs:
           uv tool install auditwheel
         if: startsWith(${{ matrix.os }}, 'ubuntu-')
 
+      - name: Handle long filenames (Windows)
+        run: git config --system core.longpaths true
+        if: startsWith(${{ matrix.os }}, 'windows-')
+
       - name: Setup Haskell
         uses: haskell-actions/setup@v2
         with:
@@ -66,6 +68,16 @@ jobs:
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
           uv run --no-project python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
+
+      - name: Download and "install" libmagic (Windows)
+        working-directory: ./git-annex
+        run: |
+          gh release download -R datalad/file-windows -p file-windows-dist.zip
+          unzip file-windows-dist.zip
+          cp libmagic-1.dll libmagic.dll
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: startsWith(${{ matrix.os }}, 'windows-')
 
       - name: Enable building with magic
         working-directory: ./git-annex
@@ -142,6 +154,8 @@ jobs:
           - 'ubuntu-22.04-arm'
           - 'ubuntu-latest'
           - 'ubuntu-24.04-arm'
+          - 'windows-2022'
+          - 'windows-latest'
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v7

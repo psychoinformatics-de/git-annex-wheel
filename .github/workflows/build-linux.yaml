@@ -2,7 +2,9 @@ name: Build git-annex on Linux
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 defaults:
   run:

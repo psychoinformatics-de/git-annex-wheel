@@ -80,12 +80,15 @@ jobs:
         working-directory: ./git-annex
         run: stack setup
 
+      - name: Debug file listing
+        run: ls -l . git-annex
+
       # At this point, stack.yaml.lock exists, so we can activate the cache
       - name: Enable Stack cache
         uses: actions/cache@v4
         with:
           path: ~/.stack
-          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          key: cache-stack-${{ matrix.os }}-x-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
           restore-keys: |
             cache-stack-${{ matrix.os }}-x-
 

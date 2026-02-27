@@ -37,15 +37,17 @@ jobs:
         run: |
           git submodule init git-annex
           git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
+          git -C git-annex sparse-checkout set --no-cone '/*' '!/doc/*'
           git submodule update --init --recursive --force git-annex
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
-      - name: Setup system
+      - name: Install patchelf, auditwheel (Linux)
         run: |
           sudo apt-get update -y && sudo apt-get install patchelf
           uv tool install auditwheel
+        if: startsWith(${{ matrix.os }}, 'ubuntu-')
 
       - name: Setup Haskell
         uses: haskell-actions/setup@v2
@@ -63,9 +65,7 @@ jobs:
           echo "Building $version"
           echo "version=${version}_$arch" >> "$GITHUB_OUTPUT"
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
-          echo -n "${PLATFORM_TAG}" > dist/platform-tag
-        env:
-          PLATFORM_TAG: ${{ matrix.arch }}
+          uv run --no-project python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
 
       - name: Enable building with magic
         working-directory: ./git-annex
@@ -79,9 +79,6 @@ jobs:
       - name: stack setup
         working-directory: ./git-annex
         run: stack setup
-
-      - name: Debug file listing
-        run: ls -l . git-annex
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
       - name: Enable Stack cache
@@ -106,38 +103,45 @@ jobs:
         working-directory: ./git-annex
         run: stack install --no-haddock --local-bin-path .
 
-      - name: Embed magic.mgc
+      - name: Embed magic.mgc (Linux)
         run: cp -Lv "$(dpkg -L libmagic-mgc | grep magic.mgc | head -n 1)" ./git-annex
+        if: startsWith(${{ matrix.os }}, 'ubuntu-')
 
       - name: Build the Python wheel
         run: |
           uv build --wheel
 
-      - name: Build self-contained wheel
+      - name: Audit wheel (Linux)
         run: |
-          uvx auditwheel repair -w tuned -z 9 dist/*.whl
-          uvx auditwheel show tuned/*.whl
+          mv dist orig
+          uvx auditwheel repair -w dist -z 9 orig/*.whl
+          uvx auditwheel show dist/*.whl
+        if: startsWith(${{ matrix.os }}, 'ubuntu-')
 
       - name: Inspect and install
         run: |
-          unzip -l tuned/git_annex-*.whl
+          unzip -l dist/git_annex-*.whl
           uv venv
-          source .venv/bin/activate
-          uv pip install tuned/git_annex-*.whl
+          source .venv/*/activate
+          uv pip install dist/git_annex-*.whl
           ls -lR .venv
 
       - name: Save wheel as artifact
         uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.os }}
-          path: tuned
+          path: dist
 
   test:
     runs-on: ${{ matrix.os }}
     needs: [build-package]
     strategy:
       matrix:
-        os: ['ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-latest', 'ubuntu-24.04-arm']
+        os:
+          - 'ubuntu-22.04'
+          - 'ubuntu-22.04-arm'
+          - 'ubuntu-latest'
+          - 'ubuntu-24.04-arm'
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v7
@@ -146,7 +150,7 @@ jobs:
           path: dist
 
       - name: List wheels
-        run: ls -lR tuned
+        run: ls -lR dist
 
       - run: mv dist/*/*.whl dist/
 
@@ -157,7 +161,7 @@ jobs:
 
       - name: Install git-annex
         run: |
-          uv tool install -v --find-links tuned git-annex
+          uv tool install -v --find-links dist git-annex
 
       - name: Which git-annex
         run: |

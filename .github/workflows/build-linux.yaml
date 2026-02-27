@@ -185,10 +185,39 @@ jobs:
           name: wheel-${{ matrix.os }}
           path: dist
 
-  test:
+  aggregate:
     runs-on: ${{ matrix.os }}
     needs: [build-package]
     strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          path: dist
+
+      - name: List wheels
+        run: ls -lR dist
+
+      - name: Aggregate wheels
+        run: |
+          mv dist/*/*.whl dist/
+          rmdir dist/*/
+
+      - name: Save wheels as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: all-wheels
+          path: dist
+
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: [aggregate]
+    strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -204,13 +233,8 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v7
         with:
-          pattern: wheel-*
+          name: all-wheels
           path: dist
-
-      - name: List wheels
-        run: ls -lR dist
-
-      - run: mv dist/*/*.whl dist/
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -219,7 +243,9 @@ jobs:
 
       - name: Install git-annex
         run: |
-          uv tool install -v --find-links dist git-annex
+          # --find-links installs from local directory
+          # Use --offline to make doubly sure we don't pull from PyPI
+          uv tool install -v --offline --find-links dist/ git-annex
 
       - name: Which git-annex
         run: |
@@ -237,10 +263,8 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v7
         with:
-          pattern: wheel-*
+          name: all-wheels
           path: dist
-
-      - run: mv dist/*/*.whl dist/
 
       - name: PyPI upload
         env:

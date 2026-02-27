@@ -126,6 +126,7 @@ jobs:
       - name: Save wheel as artifact
         uses: actions/upload-artifact@v7
         with:
+          name: wheel-${{ matrix.os }}
           path: tuned
 
   test:
@@ -138,10 +139,13 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v7
         with:
-          path: tuned
+          pattern: wheel-*
+          path: dist
 
       - name: List wheels
         run: ls -lR tuned
+
+      - run: mv dist/*/*.whl dist/
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -168,9 +172,12 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v7
         with:
-          path: tuned
+          pattern: wheel-*
+          path: dist
+
+      - run: mv dist/*/*.whl dist/
 
       - name: PyPI upload
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.UV_PUBLISH_TOKEN }}
-        run: uv publish tuned/*
+        run: uv publish dist/*

@@ -24,6 +24,7 @@ jobs:
           - ubuntu-22.04
           - ubuntu-22.04-arm
           - windows-2022
+          - macos-14
           - macos-15-intel
     steps:
       - name: Checkout this repository
@@ -180,13 +181,15 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-22.04
-          - ubuntu-22.04-arm
           - ubuntu-latest
           - ubuntu-24.04-arm
-          - windows-2022
           - windows-latest
+          - macos-latest
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - windows-2022
           - macos-15-intel
+          - macos-14
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v7

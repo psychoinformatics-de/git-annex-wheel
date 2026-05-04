@@ -1,0 +1,8 @@
+#!/bin/bash
+
+git -C git-annex fetch
+latest="$(git -C git-annex tag -l | sort | tail -1)"
+git -C git-annex checkout "${latest}"
+sed -i -e "s/^version = .*/version = \"${latest}\"/" pyproject.toml
+git commit -m "Ready to build v${latest}" git-annex pyproject.toml
+git tag -s -m "Release v{latest}" "v${latest}"

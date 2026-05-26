@@ -2,6 +2,7 @@ name: Build git-annex on Linux (arm64)
 
 on:
   push:
+  workflow_dispatch:
 
 defaults:
   run:

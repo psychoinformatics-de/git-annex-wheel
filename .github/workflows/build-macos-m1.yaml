@@ -2,6 +2,7 @@ name: Build git-annex on MacOS (14, M1)
 
 on:
   push:
+  workflow_dispatch:
 
 defaults:
   run:

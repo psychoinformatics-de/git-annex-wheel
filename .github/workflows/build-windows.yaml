@@ -2,6 +2,7 @@ name: Build git-annex on Windows
 
 on:
   push:
+  workflow_dispatch:
 
 defaults:
   run:

@@ -79,12 +79,12 @@ jobs:
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
       - name: Enable Stack cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.stack
-          key: cache-stack-macos14-${{ hashFiles('stack.yaml.lock') }}-${{ hashFiles('git-annex.cabal') }}
+          key: cache-stack-m1-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
           restore-keys: |
-            cache-stack-macos14-
+            cache-stack-macos-m1-
 
       - name: Build dependencies
         working-directory: ./git-annex

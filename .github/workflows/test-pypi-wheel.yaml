@@ -23,6 +23,16 @@ jobs:
           - windows-2022
           - macos-latest
           - macos-14
+        # Empty `python` means "let uv pick" (CPython by default).
+        python: [""]
+        include:
+          # The wheel is tagged `py3-none-<platform>`, which is implementation-
+          # agnostic. Verify it actually installs and runs under PyPy as well,
+          # so downstream PyPy users (e.g. datalad-installer) don't regress.
+          - os: ubuntu-latest
+            python: pypy@3.11
+          - os: macos-latest
+            python: pypy@3.11
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -31,7 +41,7 @@ jobs:
 
       - name: Install git-annex
         run: |
-          uv tool install git-annex
+          uv tool install ${PYTHON_SPEC:+--python "$PYTHON_SPEC"} git-annex
 
       - name: Which git-annex
         run: |

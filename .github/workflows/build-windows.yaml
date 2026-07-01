@@ -75,9 +75,9 @@ jobs:
         working-directory: ./git-annex
         run: stack --version
 
-      - name: stack setup
+      - name: Run stack config build-files
         working-directory: ./git-annex
-        run: stack setup
+        run: stack config build-files
 
       # At this point, stack.yaml.lock exists, so we can activate the cache
 

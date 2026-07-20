@@ -37,7 +37,7 @@ jobs:
 
       - name: Set up system
         run: |
-          brew install libmagic pkg-config
+          brew install libmagic pkg-config botan
           uv tool install delocate
 
       - name: Setup Haskell
@@ -66,10 +66,10 @@ jobs:
           echo BUILDER=stack >> "$GITHUB_ENV"
           echo GHC="stack ghc --" >> "$GITHUB_ENV"
 
-      - name: Enable building with magic
+      - name: Enable building with magic and botan
         working-directory: ./git-annex
         run: |
-          perl -pli -e 's/magicmime: false/magicmime: true/' stack.yaml
+          perl -pli -e 's/magicmime: false/magicmime: true/' stack-botan.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

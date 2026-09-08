@@ -40,7 +40,7 @@ jobs:
       - name: Setup system
         run: |
           sudo apt-get update -y && sudo apt-get install patchelf
-          uv tool install auditwheel
+          uv tool install 'auditwheel < 6.8.1'
 
       - name: Setup Haskell
         uses: haskell-actions/setup@v2

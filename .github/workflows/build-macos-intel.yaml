@@ -69,7 +69,7 @@ jobs:
       - name: Enable building with magic and botan
         working-directory: ./git-annex
         run: |
-          perl -pli -e 's/magicmime: false/magicmime: true/' stack-botan.yaml
+          perl -pl -e 's/magicmime: false/magicmime: true/' stack-botan.yaml > stack.yaml
 
       - name: Run stack --version
         working-directory: ./git-annex

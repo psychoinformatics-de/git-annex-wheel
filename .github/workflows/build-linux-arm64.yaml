@@ -121,6 +121,7 @@ jobs:
         run: |
           source .venv/bin/activate
           git-annex version
+          git-annex version | grep MagicMime
           git-annex test
 
       - name: PyPi upload

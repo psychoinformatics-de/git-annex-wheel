@@ -6,7 +6,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: C:/msys64/usr/bin/bash.exe -e {0}
 
 env:
   LANG: C.utf-8
@@ -20,30 +20,29 @@ jobs:
         with:
           submodules: false
 
+      - name: Handle long filenames
+        run: git config --system core.longpaths true
+
       - name: Sparse checkout git-annex
-        # we exclude doc/ -- it has filenames so long that the FS
-        # on windows barfs
         # we fetch shallow, assuming the last 6 months still have a
         # usable tag to determine a version
         run: |
           git submodule init git-annex
-          git clone --no-checkout --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
-          git -C git-annex sparse-checkout set --no-cone '/*' '!/doc/*'
+          git clone --shallow-since 6.month.ago $(git config submodule.git-annex.url) git-annex
           git submodule update --init --recursive --force git-annex
+
+      - name: Configure build environment
+        id: myvars
+        working-directory: ./git-annex
+        run: |
+          cp cabal-stackage.project cabal.project
+          ghc_version=$(grep 'with-compiler' cabal-stackage.config | sed 's/.* ghc-//')
+          echo "GHC_VERSION=$ghc_version" >> $GITHUB_OUTPUT
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: "false"
-
-      - name: Setup Haskell
-        uses: haskell-actions/setup@v2
-        with:
-          enable-stack: true
-          stack-no-global: true
-
-      - name: Handle long filenames
-        run: git config --system core.longpaths true
 
       - name: Get build version
         id: build-version
@@ -57,55 +56,95 @@ jobs:
           echo "$(git describe HEAD | sed -e 's/-/./' | sed -e 's/-g.*//')" > dist/pypi-version
           uv run --no-project python -c 'import sysconfig; print(sysconfig.get_platform().replace(".", "_").replace("-", "_"))' > dist/platform-tag
 
-      - name: Download and "install" libmagic for windows
-        working-directory: ./git-annex
+      - name: Add msys to path
         run: |
-          gh release download -R datalad/file-windows -p file-windows-dist.zip
-          unzip file-windows-dist.zip
-          cp libmagic-1.dll libmagic.dll
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "C:/msys64/mingw64/bin" >> "$GITHUB_PATH"
 
-      - name: Enable building with magic
-        working-directory: ./git-annex
+      - name: Install pkg-config
         run: |
-          sed -i -e 's/magicmime: false/magicmime: true/' stack.yaml
+          echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_SYSTEM_LIBS=1"   >> $GITHUB_ENV
+          ghcup run -m -- pacman --noconfirm -S mingw-w64-x86_64-pkg-config
+      
+      - name: Install libmagic
+        run: |
+          ghcup run -m -- pacman --noconfirm -S mingw-w64-x86_64-file
+          cp /c/msys64/mingw64/share/misc/magic.mgc git-annex/
 
-      - name: Run stack --version
-        working-directory: ./git-annex
-        run: stack --version
+      - name: Install libbotan
+        run: |
+          ghcup run -m -- pacman --noconfirm -S mingw-w64-x86_64-libbotan
 
-      - name: Run stack config build-files
-        working-directory: ./git-annex
-        run: stack config build-files
-
-      # At this point, stack.yaml.lock exists, so we can activate the cache
-
-      - name: Enable Stack cache
-        uses: actions/cache@v5
+      - name: Setup Haskell
+        id: setup-haskell
+        uses: haskell-actions/setup@v2.12.1
         with:
-          path: 'C:\sr\snapshots'
-          key: cache-stack-windows-${{ hashFiles('git-annex/stack.yaml.lock') }}-${{ hashFiles('git-annex/git-annex.cabal') }}
-          restore-keys: |
-            cache-stack-windows-
+          ghc-version: ${{ steps.myvars.outputs.GHC_VERSION }}
+          cabal-version: 3.16
 
-      - name: Build dependencies
-        working-directory: ./git-annex
-        run: stack build --only-dependencies --extra-include-dirs=$PWD --extra-lib-dirs=$PWD
-
-      - name: Update version info for git rev being built.
+      - name: cabal configure
         working-directory: ./git-annex
         run: |
-          stack ghc --no-haddock Build/BuildVersion.hs
-          ./Build/BuildVersion > dist/build-version
+          cabal configure \
+            --extra-prog-path=C:/msys64/mingw64/bin \
+            --extra-include-dirs=C:/msys64/mingw64/include \
+            --extra-lib-dirs=C:/msys64/mingw64/lib
+
+      # generate git-annex/dist-newstyle/cache/plan.json used in caching
+      - name: generate cabal plan
+        working-directory: ./git-annex
+        run: |
+          cabal build all --dry-run
+
+      - name: Restore cache
+        uses: actions/cache/restore@v6
+        id: restore-cabal-cache
+        env:
+          key: cache-cabal-windows
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-${{ hashFiles('git-annex/dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: Build cabal dependencies
+        working-directory: ./git-annex
+        run: |
+          cabal build --only-dependencies
+
+      - name: Save cache
+        uses: actions/cache/save@v6
+        if: ${{ steps.restore-cabal-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.restore-cabal-cache.outputs.cache-primary-key }}
 
       - name: Build git-annex
         working-directory: ./git-annex
-        run: stack install --no-haddock --local-bin-path .
+        run: |
+          cabal build
+          cp $(cabal list-bin git-annex) ./git-annex.exe
+          ./git-annex version
+      
+      - name: Update version info
+        working-directory: ./git-annex
+        run: |
+          mkdir -p dist
+          ./git-annex version --raw > dist/build-version
+
+      - name: Copy linked dlls
+        working-directory: ./git-annex
+        run: |
+          for f in $(ldd ./git-annex | sed 's/.*=> //' | sed 's/ .*//' | grep .dll | grep msys64); do
+            cp -v "$f" .
+          done
 
       - name: Build the Python wheel
         run: |
           uv build --wheel
+      
+      - name: Remove msys from path
+        run: |
+          rm "$GITHUB_PATH"
 
       - name: Inspect and install
         run: |

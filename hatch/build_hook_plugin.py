@@ -2,6 +2,7 @@ from pathlib import Path
 from subprocess import run
 from sysconfig import get_platform
 from typing import Any
+import os
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -24,18 +25,15 @@ class SpecialBuildHook(BuildHookInterface):
         build_data['tag'] = f'py3-none-{platform_tag}'
 
         if platform_id.startswith('win'):
-            # assumes that git-annex has been built with libmagic support in the
-            # way that the github action does
-            for k, v in (
-                # from, to
-                ('git-annex/git-annex.exe', 'git_annex/git-annex.exe'),
-                ('git-annex/libmagic-1.dll', 'git_annex/libmagic-1.dll'),
-                ('git-annex/libgnurx-0.dll', 'git_annex/libgnurx-0.dll'),
-            ):
-                build_data['force_include'][k] = v
+            build_data['force_include']['git-annex/git-annex.exe'] = \
+              'git_annex/git-annex.exe'
+            for file in os.listdir("git-annex"):
+                if file.endswith(".dll"):
+                    build_data['force_include']["git-annex/" + file] = \
+                            "git_annex/" + file
         else:
             build_data['force_include']['git-annex/git-annex'] = \
-                'git_annex/git-annex'
+              'git_annex/git-annex'
 
         # if the build process produced a file magic DB, we ship it
         if Path('git-annex', 'magic.mgc').exists():

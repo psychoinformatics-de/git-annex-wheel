@@ -1,4 +1,4 @@
-name: Build git-annex on MacOS (14, M1)
+name: Build git-annex on MacOS (15, M1)
 
 on:
   push:

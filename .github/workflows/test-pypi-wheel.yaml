@@ -22,7 +22,7 @@ jobs:
           - windows-latest
           - windows-2022
           - macos-latest
-          - macos-14
+          - macos-15
         # Empty `python` means "let uv pick" (CPython by default).
         python: [""]
         include:

@@ -15,7 +15,8 @@ jobs:
   build-package:
     # choose the oldest one to get the oldest GLIBC
     # from https://github.com/actions/partner-runner-images
-    runs-on: ubuntu-22.04-arm
+    # but botan-3 isn't available until 26.04
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v6

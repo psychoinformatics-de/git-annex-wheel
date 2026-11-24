@@ -14,7 +14,8 @@ env:
 jobs:
   build-package:
     # choose the oldest one to get the oldest GLIBC
-    runs-on: ubuntu-22.04
+    # but botan-3 isn't available until 26.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v6

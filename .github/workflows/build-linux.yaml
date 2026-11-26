@@ -14,8 +14,7 @@ env:
 jobs:
   build-package:
     # choose the oldest one to get the oldest GLIBC
-    # but botan-3 isn't available until 26.04
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v6
@@ -39,8 +38,44 @@ jobs:
 
       - name: Setup system
         run: |
-          sudo apt-get update -y && sudo apt-get install patchelf libbotan-3-dev libmagic-dev
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            build-essential devscripts equivs \
+            patchelf libmagic-dev
           uv tool install 'auditwheel < 6.7.0'
+
+      - name: Configure Debian source repository
+        run: |
+          keyring_deb=debian-archive-keyring.deb
+          curl --fail --show-error --location \
+            'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb' \
+            --output "$keyring_deb"
+
+          echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  '"$keyring_deb" \
+            | sha256sum --check -
+          sudo dpkg -i "$keyring_deb"
+          echo "deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie main" \
+            | sudo tee /etc/apt/sources.list.d/debian-src.list
+          sudo apt-get update
+
+      - name: Build and install Botan 3 from Debian source
+        run: |
+          set -euxo pipefail
+
+          mkdir -p botan-source
+          cd botan-source
+
+          apt-get source botan3
+          src_dir="$(find . -maxdepth 1 -type d -name 'botan3-*' -print -quit)"
+          cd "$src_dir"
+
+          sudo mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' \
+            debian/control
+
+          dpkg-buildpackage -us -uc -B
+
+          sudo apt-get install -y ../libbotan-3-*.deb
 
       - name: Setup Haskell
         uses: haskell-actions/setup@v2
